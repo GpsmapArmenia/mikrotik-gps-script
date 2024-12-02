@@ -1,0 +1,85 @@
+1) Register on the website  www.gpsmap.am
+2) Add your mikrotik imei
+3) and run
+
+
+_________________________________________________________________________
+:local serverURL "https://gpsmap.am/server/api/api_loc.php"
+:local fakeImei "XXXXXXXXXXXXXXX" 
+:local SIMslot "0"
+:local button "0"
+
+:global isDebug
+
+
+# :put $isDebug - check current state
+# :set $isDebug "terminal" - log to terminal
+# :set $isDebug "off" - logging off
+
+# Current Debug status
+:set $isDebug "off"
+
+
+
+:local gpsDateTime
+:local lat
+:local lon
+:local alt
+:local gpsSpeed
+:local bearing
+:local gpsValid
+:local sats
+:local hdop
+:local DateTime
+:local outputURL
+
+
+#Check and set coordinate format and get data from GPS
+:if ( [/system gps get coordinate-format ] != "dd") do={/system gps set coordinate-format=dd}
+
+
+/system gps monitor once do={
+:set $gpsDateTime $("date-and-time")
+:set $lat [:pick $("latitude") 0 7]
+:set $lon [:pick $("longitude") 0 8]
+:set $alt $("altitude")
+:set $gpsSpeed $("speed")
+:set $bearing $("true-bearing")
+:set $gpsValid $("valid")
+:set $sats $("satellites")
+:set $hdop $("horizontal-dilution")}
+
+:set $alt [:pick $alt 0 [:find $alt "."]]
+:set $gpsSpeed ([:pick $gpsSpeed 0 [:find $gpsSpeed "."]].".0")
+:set $bearing ([:pick $bearing 0 [:find $bearing "."]].".0")
+
+# Reformating date and time.
+:local day [ :pick $gpsDateTime 4 6 ]
+:local month [ :pick $gpsDateTime 0 3 ]
+:local year [ :pick $gpsDateTime 7 11 ]
+:local time [ :pick $gpsDateTime 12 19]
+:local DateTime "$year-$month-$day $time"
+
+:set $outputURL ("$serverURL?imei=$fakeImei&dt=$DateTime&lat=$lat&lng=$lon&altitude=$alt&angle=$bearing&speed=$gpsSpeed&loc_valid=1")
+
+:if ($isDebug = "terminal") do={
+:put $gpsDateTime
+:put $DateTime
+:put $lat
+:put $lon
+:put $alt
+:put $gpsSpeed
+:put $bearing
+:put $gpsValid
+:put $sats
+:put $hdop
+:put $serverURL
+:put $fakeImei
+:put $battVoltage
+:put  $SIMslot
+:put  $button
+:put $outputURL
+}
+
+
+/tool fetch http-method=post url="$outputURL" output=none
